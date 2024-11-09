@@ -3,10 +3,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Initialize lists for the data
+import csv
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+
+# Initialize lists for the data
 Intento, Puntaje, Max_Puntaje, Reward_dist, Reward_ctrl = [], [], [], [], []
-Reward_near_object, Reward_contact, Episode_length, TD_error, Actor_loss, Critic_loss, Policy_gradients = [], [], [], [], [], [], []
-std_dev_list = []
+Reward_near_object, Reward_contact, Episode_length, TD_error_1, TD_error_2, Actor_loss, Critic_loss_1, Critic_loss_2, Policy_gradients = [], [], [], [], [], [], [], [], []
 Duracion = []
+
 # Read the CSV file
 with open('registro_experimento_final.csv', 'r') as file:
     csv_reader = csv.reader(file)
@@ -25,10 +31,12 @@ with open('registro_experimento_final.csv', 'r') as file:
             reward_near_object = float(line[7])
             reward_contact = float(line[8])
             episode_length = int(line[9])
-            td_error = float(line[10])
-            actor_loss = float(line[11])
-            critic_loss = float(line[12])
-            policy_gradients = float(line[13])
+            td_error_1 = float(line[10])
+            td_error_2 = float(line[11])
+            actor_loss = float(line[12])
+            critic_loss_1 = float(line[13])
+            critic_loss_2 = float(line[14])
+            policy_gradients = float(line[15])
             duracion = float(line[2])  # Agregar duración del episodio
         except (ValueError, IndexError) as e:
             print(f"Error al procesar la línea: {line} - {e}")
@@ -43,9 +51,11 @@ with open('registro_experimento_final.csv', 'r') as file:
         Reward_near_object.append(reward_near_object)
         Reward_contact.append(reward_contact)
         Episode_length.append(episode_length)
-        TD_error.append(td_error)
+        TD_error_1.append(td_error_1)
+        TD_error_2.append(td_error_2)
         Actor_loss.append(actor_loss)
-        Critic_loss.append(critic_loss)
+        Critic_loss_1.append(critic_loss_1)
+        Critic_loss_2.append(critic_loss_2)
         Policy_gradients.append(policy_gradients)
         Duracion.append(duracion)
 
@@ -71,116 +81,152 @@ with open('best_scores_final.csv', 'r') as best_file:
         Best_Score_Attempts.append(best_intento)
         Best_Scores.append(best_score)
 
-
 # Calculate the average every 100 episodes
 avg_reward_dist = [np.mean(Reward_dist[i:i+100]) for i in range(0, len(Reward_dist), 100)]
 avg_reward_ctrl = [np.mean(Reward_ctrl[i:i+100]) for i in range(0, len(Reward_ctrl), 100)]
 avg_intentos = [np.mean(Intento[i:i+100]) for i in range(0, len(Intento), 100)]
 avg_reward_near_object = [np.mean(Reward_near_object[i:i+100]) for i in range(0, len(Reward_near_object), 100)]
 avg_reward_contact = [np.mean(Reward_contact[i:i+100]) for i in range(0, len(Reward_contact), 100)]
-avg_td_error = [np.mean(TD_error[i:i+100]) for i in range(0, len(TD_error), 100)]
+avg_td_error_1 = [np.mean(TD_error_1[i:i+100]) for i in range(0, len(TD_error_1), 100)]
+avg_td_error_2 = [np.mean(TD_error_2[i:i+100]) for i in range(0, len(TD_error_2), 100)]
 avg_actor_loss = [np.mean(Actor_loss[i:i+100]) for i in range(0, len(Actor_loss), 100)]
-avg_critic_loss = [np.mean(Critic_loss[i:i+100]) for i in range(0, len(Critic_loss), 100)]
+avg_critic_loss_1 = [np.mean(Critic_loss_1[i:i+100]) for i in range(0, len(Critic_loss_1), 100)]
+avg_critic_loss_2 = [np.mean(Critic_loss_2[i:i+100]) for i in range(0, len(Critic_loss_2), 100)]
 avg_policy_gradients = [np.mean(Policy_gradients[i:i+100]) for i in range(0, len(Policy_gradients), 100)]
-
 avg_best_score_a = [np.mean(Best_Score_Attempts[i:i+5]) for i in range(0, len(Best_Score_Attempts), 5)]
 avg_best_score = [np.mean(Best_Scores[i:i+5]) for i in range(0, len(Best_Scores), 5)]
-
 avg_normal_score_a = [np.mean(Intento[i:i+100]) for i in range(0, len(Intento), 100)]
 avg_normal_score = [np.mean(Puntaje[i:i+100]) for i in range(0, len(Puntaje), 100)]
 
-# Create figures for the plots
-fig, ax = plt.subplots(2, 1, figsize=(10, 8))
-fig2, ax2 = plt.subplots(2, 2, figsize=(14, 12))  # Updated to 2 rows and 2 columns
-fig3, ax3 = plt.subplots(2, 1, figsize=(10, 8))
-fig4, ax4 = plt.subplots(2, 1, figsize=(10, 8))
-fig5, ax5 = plt.subplots(2, 1, figsize=(10, 8))
 
-# Plot 1: Score by Attempt
-ax[0].plot(Intento, Puntaje, linestyle='-', label='Puntaje')
-ax[0].set_xlabel('Intento')
-ax[0].set_ylabel('Puntaje')
-ax[0].set_title('Puntaje por Intento')
-ax[0].legend()
+# Create figures for the plots, organizing them into groups of 4 per image
+figures = []
 
-# Plot 2: Max Score by Attempt
-ax[1].plot(Intento, Max_Puntaje, linestyle='-', color='orange', label='Máximo Puntaje')
-ax[1].set_xlabel('Intento')
-ax[1].set_ylabel('Máximo Puntaje')
-ax[1].set_title('Máximo Puntaje por Intento')
-ax[1].legend()
+# Plot definitions grouped by 4 per figure
+for i in range(0, 15, 4):
+    fig, ax = plt.subplots(2, 2, figsize=(14, 12))
 
-# Plot 3: Reward Distance by Attempt
-ax2[0, 0].plot(avg_intentos, avg_reward_dist, linestyle='-', color='green', label='Reward Dist')
-ax2[0, 0].set_xlabel('Intento')
-ax2[0, 0].set_ylabel('Puntaje Distancia')
-ax2[0, 0].set_title('Puntaje Promedio Distancia por cada 100 intentos')
-ax2[0, 0].legend()
+    if i == 0:
+        # Plot 1: Score by Attempt
+        ax[0, 0].plot(Intento, Puntaje, linestyle='-', label='Puntaje')
+        ax[0, 0].set_xlabel('Intento')
+        ax[0, 0].set_ylabel('Puntaje')
+        ax[0, 0].set_title('Puntaje por Intento')
+        ax[0, 0].legend()
 
-# Plot 4: Reward Control by Attempt
-ax2[0, 1].plot(avg_intentos, avg_reward_ctrl, linestyle='-', color='blue', label='Reward Ctrl')
-ax2[0, 1].set_xlabel('Intento')
-ax2[0, 1].set_ylabel('Puntaje Control')
-ax2[0, 1].set_title('Puntaje Promedio Control por cada 100 intentos')
-ax2[0, 1].legend()
+        # Plot 2: Max Score by Attempt
+        ax[0, 1].plot(Intento, Max_Puntaje, linestyle='-', color='orange', label='Máximo Puntaje')
+        ax[0, 1].set_xlabel('Intento')
+        ax[0, 1].set_ylabel('Máximo Puntaje')
+        ax[0, 1].set_title('Máximo Puntaje por Intento')
+        ax[0, 1].legend()
 
-# Plot 5: Reward Near Object by Attempt
-ax2[1, 0].plot(avg_intentos, avg_reward_near_object, linestyle='-', color='red', label='Reward Near Object')
-ax2[1, 0].set_xlabel('Intento')
-ax2[1, 0].set_ylabel('Recompensa Cerca del Objeto')
-ax2[1, 0].set_title('Recompensa Promedio por Acercarse al Objeto por cada 100 intentos')
-ax2[1, 0].legend()
+        # Plot 3: Reward Distance by Attempt
+        ax[1, 0].plot(avg_intentos, avg_reward_dist, linestyle='-', color='green', label='Reward Dist')
+        ax[1, 0].set_xlabel('Intento')
+        ax[1, 0].set_ylabel('Puntaje Distancia')
+        ax[1, 0].set_title('Puntaje Promedio Distancia por cada 100 intentos')
+        ax[1, 0].legend()
 
-# Plot 6: Reward Contact by Attempt
-ax2[1, 1].plot(avg_intentos, avg_reward_contact, linestyle='-', color='purple', label='Reward Contact')
-ax2[1, 1].set_xlabel('Intento')
-ax2[1, 1].set_ylabel('Recompensa Contacto')
-ax2[1, 1].set_title('Recompensa Promedio por Contacto Exitoso por cada 100 intentos')
-ax2[1, 1].legend()
+        # Plot 4: Reward Control by Attempt
+        ax[1, 1].plot(avg_intentos, avg_reward_ctrl, linestyle='-', color='blue', label='Reward Ctrl')
+        ax[1, 1].set_xlabel('Intento')
+        ax[1, 1].set_ylabel('Puntaje Control')
+        ax[1, 1].set_title('Puntaje Promedio Control por cada 100 intentos')
+        ax[1, 1].legend()
 
-# Gráfico 3: Promedio acumulado de puntajes
-ax3[0].plot(Intento, cumulative_avg, linestyle='-', color='blue', label='Promedio Acumulado')
-ax3[0].set_xlabel('Intento')
-ax3[0].set_ylabel('Promedio Acumulado')
-ax3[0].set_title('Promedio Acumulado de Puntajes por Intento')
-ax3[0].legend()
+    elif i == 4:
+        # Plot 5: Reward Near Object by Attempt
+        ax[0, 0].plot(Best_Score_Attempts, Best_Scores, linestyle='-', color='purple', label='Best Scores from File')
+        ax[0, 0].set_xlabel('Intento')
+        ax[0, 0].set_ylabel('Best Scores')
+        ax[0, 0].set_title('Best Scores by Attempt (from best_scores_final.csv)')
+        ax[0, 0].legend()
 
-# Plot 8: Best Scores from best_scores_final.csv
-ax3[1].plot(Best_Score_Attempts, Best_Scores, linestyle='-', color='purple', label='Best Scores from File')
-ax3[1].set_xlabel('Intento')
-ax3[1].set_ylabel('Best Scores')
-ax3[1].set_title('Best Scores by Attempt (from best_scores_final.csv)')
-ax3[1].legend()
+        # Plot 6: Promedio acumulado de puntajes
+        ax[0, 1].plot(Intento, cumulative_avg, linestyle='-', color='blue', label='Promedio Acumulado')
+        ax[0, 1].set_xlabel('Intento')
+        ax[0, 1].set_ylabel('Promedio Acumulado')
+        ax[0, 1].set_title('Promedio Acumulado de Puntajes por Intento')
+        ax[0, 1].legend()
 
-# Gráfico 4: Promedio acumulado de puntajes
-ax4[0].plot(avg_best_score_a, avg_best_score, linestyle='-', color='blue', label='Promedio Mejores Puntajes')
-ax4[0].set_xlabel('Intentos x 3')
-ax4[0].set_ylabel('Mejor Puntaje Promedio x3')
-ax4[0].set_title('Promedio Mejores Puntajes por c/ 3 intentos - Best')
-ax4[0].legend()
+        # Plot 7: Average Critic Losses by Attempt
+        avg_critic_loss_combined = [(c1 + c2) / 2 for c1, c2 in zip(avg_critic_loss_1, avg_critic_loss_2)]
+        ax[1, 0].plot(avg_intentos, avg_critic_loss_combined, linestyle='-', color='blue', label='Critic Loss (Avg)')
+        ax[1, 0].set_xlabel('Intento')
+        ax[1, 0].set_ylabel('Pérdida del Crítico Promedio')
+        ax[1, 0].set_title('Pérdida Promedio de los Críticos 1 y 2 por cada 100 intentos')
+        ax[1, 0].legend()
 
-# Plot 10: Best Scores from best_scores_final.csv
-ax4[1].plot(avg_normal_score_a, avg_normal_score, linestyle='-', color='purple', label='Promedio x cada 100 episodios')
-ax4[1].set_xlabel('Intento')
-ax4[1].set_ylabel('Puntaje Promedio')
-ax4[1].set_title('Puntaje Promedio por cada 100 episodios - Normal')
-ax4[1].legend()
+        # Plot 8: Critic Loss 1 by Attempt
+        ax[1, 1].plot(avg_intentos, avg_critic_loss_1, linestyle='-', color='purple', label='Critic Loss 1')
+        ax[1, 1].set_xlabel('Intento')
+        ax[1, 1].set_ylabel('Pérdida del Crítico 1')
+        ax[1, 1].set_title('Pérdida del Crítico 1 Promedio por cada 100 intentos')
+        ax[1, 1].legend()
 
-# Plot 11: Tiempo por cada episodio
-ax5[0].plot(Intento, Duracion, linestyle='-', color='black', label='Duración del Episodio')
-ax5[0].set_xlabel('Intento')
-ax5[0].set_ylabel('Duración (s)')
-ax5[0].set_title('Duración del Episodio por Intento')
-ax5[0].legend()
+    elif i == 8:
+        # Plot 9: Promedio Mejores Puntajes por c/3 intentos
+        ax[0, 0].plot(avg_intentos, avg_critic_loss_2, linestyle='-', color='purple', label='Critic Loss 2')
+        ax[0, 0].set_xlabel('Intento')
+        ax[0, 0].set_ylabel('Pérdida del Crítico 2')
+        ax[0, 0].set_title('Pérdida del Crítico 2 Promedio por cada 100 intentos')
+        ax[0, 0].legend()
 
-# Plot 12: Best Scores
-ax5[1].plot(Best_Score_Attempts, Best_Scores, linestyle='-', color='cyan', label='Best Scores')
-ax5[1].set_xlabel('Intento')
-ax5[1].set_ylabel('Best Scores')
-ax5[1].set_title('Todos los Puntajes de Best Scores')
-ax5[1].legend()
+        # Plot 10: Puntaje Promedio por cada 100 episodios - Normal
+        ax[0, 1].plot(avg_normal_score_a, avg_normal_score, linestyle='-', color='purple', label='Promedio x cada 100 episodios')
+        ax[0, 1].set_xlabel('Intento')
+        ax[0, 1].set_ylabel('Puntaje Promedio')
+        ax[0, 1].set_title('Puntaje Promedio por cada 100 episodios - Normal')
+        ax[0, 1].legend()
 
+        # Plot 11: Tiempo por cada episodio
+        ax[1, 0].plot(Intento, Duracion, linestyle='-', color='black', label='Duración del Episodio')
+        ax[1, 0].set_xlabel('Intento')
+        ax[1, 0].set_ylabel('Duración (s)')
+        ax[1, 0].set_title('Duración del Episodio por Intento')
+        ax[1, 0].legend()
 
-# Adjust layout and show the plots
-plt.tight_layout()
+        # Plot 12: Promedio TD Error de ambos críticos por intento
+        avg_td_error = [(c1 + c2) / 2 for c1, c2 in zip(avg_td_error_1, avg_td_error_2)]
+        ax[1, 1].plot(avg_intentos, avg_td_error, linestyle='-', color='teal', label='TD Error Promedio')
+        ax[1, 1].set_xlabel('Intento')
+        ax[1, 1].set_ylabel('TD Error Promedio')
+        ax[1, 1].set_title('TD Error Promedio de ambos críticos por cada 100 intentos')
+        ax[1, 1].legend()
+
+    elif i == 12:
+        # Plot 13: TD Error 1 by Attempt
+        ax[0, 0].plot(avg_intentos, avg_td_error_1, linestyle='-', color='pink', label='TD Error 1')
+        ax[0, 0].set_xlabel('Intento')
+        ax[0, 0].set_ylabel('TD Error 1')
+        ax[0, 0].set_title('TD Error 1 Promedio por cada 100 intentos')
+        ax[0, 0].legend()
+
+        # Plot 14: TD Error 2 by Attempt
+        ax[0, 1].plot(avg_intentos, avg_td_error_2, linestyle='-', color='purple', label='TD Error 2')
+        ax[0, 1].set_xlabel('Intento')
+        ax[0, 1].set_ylabel('TD Error 2')
+        ax[0, 1].set_title('TD Error 2 Promedio por cada 100 intentos')
+        ax[0, 1].legend()
+
+        # # Plot 15: Critic Loss by Attempt
+        # ax[1, 0].plot(avg_intentos, avg_critic_loss, linestyle='-', color='brown', label='Critic Loss')
+        # ax[1, 0].set_xlabel('Intento')
+        # ax[1, 0].set_ylabel('Pérdida del Crítico')
+        # ax[1, 0].set_title('Pérdida del Crítico Promedio por cada 100 intentos')
+        # ax[1, 0].legend()
+
+        # Policy Gradients by Attempt
+        ax[1, 1].plot(avg_intentos, avg_policy_gradients, linestyle='-', color='orange', label='Policy Gradients')
+        ax[1, 1].set_xlabel('Intento')
+        ax[1, 1].set_ylabel('Gradientes de Política')
+        ax[1, 1].set_title('Gradientes de Política Promedio por cada 100 intentos')
+        ax[1, 1].legend()
+
+    # Maximizar las ventanas antes de mostrar
+    plt.tight_layout()
+    figures.append(fig)
+
+# Display all figures
 plt.show()
