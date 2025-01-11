@@ -11,7 +11,8 @@ import os
 # Initialize lists for the data
 Puntaje, Max_Puntaje, Reward_dist, Reward_ctrl = [], [], [], []
 Reward_near_object, Reward_contact, Episode_length, TD_error_1, TD_error_2, Actor_loss, Critic_loss_1, Critic_loss_2, Policy_gradients = [], [], [], [], [], [], [], [], []
-Duracion = []
+Duracion , Distance_moved , Distance_left = [],[],[]
+
 
 # Read the CSV file
 with open('registro_experimento_final.csv', 'r') as file:
@@ -38,6 +39,8 @@ with open('registro_experimento_final.csv', 'r') as file:
             critic_loss_2 = float(line[14])
             policy_gradients = float(line[15])
             duracion = float(line[2])  # Agregar duración del episodio
+            distance_moved = float(line[16])
+            distance_left = float(line[17])
         except (ValueError, IndexError) as e:
             print(f"Error al procesar la línea: {line} - {e}")
             continue
@@ -58,6 +61,8 @@ with open('registro_experimento_final.csv', 'r') as file:
         Critic_loss_2.append(critic_loss_2)
         Policy_gradients.append(policy_gradients)
         Duracion.append(duracion)
+        Distance_moved.append(distance_moved)
+        Distance_left.append(distance_left)
 
 Intento = list(range(1, len(Puntaje) + 1))
 cumulative_avg = np.cumsum(Puntaje) / np.arange(1, len(Puntaje) + 1)
@@ -122,25 +127,25 @@ for i in range(0, 11, 4):
         ax[0, 1].legend()
 
         # Plot 3: Reward Distance by Attempt
-        ax[1, 0].plot(avg_intentos, avg_reward_dist, linestyle='-', color='green', label='Reward Dist')
+        ax[1, 0].plot(Intento, Distance_moved, linestyle='-', color='green', label='Distance Moved by the object')
         ax[1, 0].set_xlabel('Attempt')
-        ax[1, 0].set_ylabel('Distance Score')
-        ax[1, 0].set_title('Average Score (object - goal) per 100 attempts')
+        ax[1, 0].set_ylabel('Distance Displaced')
+        ax[1, 0].set_title('Distance displaced by the object')
         ax[1, 0].legend()
 
         # Plot 4: Reward Control by Attempt
-        ax[1, 1].plot(avg_intentos, avg_reward_ctrl, linestyle='-', color='blue', label='Reward Ctrl')
+        ax[1, 1].plot(Intento, Distance_left, linestyle='-', color='blue', label='Distance Left To Goal')
         ax[1, 1].set_xlabel('Attempt')
-        ax[1, 1].set_ylabel('Control Score')
-        ax[1, 1].set_title('Control Score per 100 attempts')
+        ax[1, 1].set_ylabel('Distance Left')
+        ax[1, 1].set_title('Distance Left to Goal')
         ax[1, 1].legend()
 
     elif i == 4:
         # Plot 6: Promedio acumulado de puntajes
-        ax[0, 0].plot(Intento, cumulative_avg, linestyle='-', color='blue', label='Average Reward')
+        ax[0, 0].plot(avg_intentos, avg_reward_ctrl, linestyle='-', color='blue', label='Reward Ctrl')
         ax[0, 0].set_xlabel('Attempt')
-        ax[0, 0].set_ylabel('Average Score')
-        ax[0, 0].set_title('Average Cumulative Score per 100 attempts ')
+        ax[0, 0].set_ylabel('Control Score')
+        ax[0, 0].set_title('Control Score per 100 attempts')
         ax[0, 0].legend()
 
         # Plot 7: Average Critic Losses by Attempt
