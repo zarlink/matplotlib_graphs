@@ -7,11 +7,13 @@ import csv
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import ast
+import re
 
 # Initialize lists for the data
 Puntaje, Max_Puntaje, Reward_dist, Reward_ctrl = [], [], [], []
 Reward_near_object, Reward_contact, Episode_length, TD_error_1, TD_error_2, Actor_loss, Critic_loss_1, Critic_loss_2, Policy_gradients = [], [], [], [], [], [], [], [], []
-Duracion , Distance_moved , Distance_left = [],[],[]
+Duracion , Distance_moved , Distance_left, Positions, Velocities = [],[],[],[],[]
 
 
 # Read the CSV file
@@ -41,6 +43,14 @@ with open('registro_experimento_final.csv', 'r') as file:
             duracion = float(line[2])  # Agregar duración del episodio
             distance_moved = float(line[16])
             distance_left = float(line[17])
+            last_state = line[-1]
+            # Eliminar corchetes y reemplazar múltiples espacios por un único espacio
+            last_state = re.sub(r'[\[\]]', '', last_state.strip())  # Eliminar corchetes
+            last_state = re.sub(r'\s+', ' ', last_state)  # Reemplazar múltiples espacios con un único espacio
+
+            # Separar valores por espacios o comas y convertir a flotantes
+            last_state = [float(value) for value in re.split(r'[ ,]+', last_state) if value]
+
         except (ValueError, IndexError) as e:
             print(f"Error al procesar la línea: {line} - {e}")
             continue
@@ -63,6 +73,8 @@ with open('registro_experimento_final.csv', 'r') as file:
         Duracion.append(duracion)
         Distance_moved.append(distance_moved)
         Distance_left.append(distance_left)
+        Positions.append(last_state[:7])
+        Velocities.append(last_state[7:14])
 
 Intento = list(range(1, len(Puntaje) + 1))
 cumulative_avg = np.cumsum(Puntaje) / np.arange(1, len(Puntaje) + 1)
@@ -109,98 +121,190 @@ avg_normal_score = [np.mean(Puntaje[i:i+100]) for i in range(0, len(Puntaje), 10
 figures = []
 
 # Plot definitions grouped by 4 per figure
-for i in range(0, 11, 4):
-    fig, ax = plt.subplots(2, 2, figsize=(14, 12))
+for i in range(0, 13, 4):
+    if i < 12:
+        fig, ax = plt.subplots(2, 2, figsize=(14, 12))
 
-    if i == 0:
-        # Plot 1: Score by Attempt
-        ax[0, 0].plot(Intento, Puntaje, linestyle='-', label='Score')
-        ax[0, 0].set_xlabel('Attempt')
-        ax[0, 0].set_ylabel('Score')
-        ax[0, 0].set_title('Score per attempt')
-        ax[0, 0].legend()
+        if i == 0:
+            # Plot 1: Score by Attempt
+            ax[0, 0].plot(Intento, Puntaje, linestyle='-', label='Score')
+            ax[0, 0].set_xlabel('Attempt')
+            ax[0, 0].set_ylabel('Score')
+            ax[0, 0].set_title('Score per attempt')
+            ax[0, 0].legend()
 
-        ax[0, 1].plot(Intento, Reward_contact, linestyle='-', color='red', label='Distance Arm - Obj ')
-        ax[0, 1].set_xlabel('Attempt')
-        ax[0, 1].set_ylabel('Distance (m)')
-        ax[0, 1].set_title('Distance arm to objective')
-        ax[0, 1].legend()
+            ax[0, 1].plot(Intento, Reward_contact, linestyle='-', color='red', label='Distance Arm - Obj ')
+            ax[0, 1].set_xlabel('Attempt')
+            ax[0, 1].set_ylabel('Distance (m)')
+            ax[0, 1].set_title('Distance arm to objective')
+            ax[0, 1].legend()
 
-        # Plot 3: Reward Distance by Attempt
-        ax[1, 0].plot(Intento, Distance_moved, linestyle='-', color='green', label='Distance Moved by the object')
-        ax[1, 0].set_xlabel('Attempt')
-        ax[1, 0].set_ylabel('Distance Displaced')
-        ax[1, 0].set_title('Distance displaced by the object')
-        ax[1, 0].legend()
+            # Plot 3: Reward Distance by Attempt
+            ax[1, 0].plot(Intento, Distance_moved, linestyle='-', color='green', label='Distance Moved by the object')
+            ax[1, 0].set_xlabel('Attempt')
+            ax[1, 0].set_ylabel('Distance Displaced')
+            ax[1, 0].set_title('Distance displaced by the object')
+            ax[1, 0].legend()
 
-        # Plot 4: Reward Control by Attempt
-        ax[1, 1].plot(Intento, Distance_left, linestyle='-', color='blue', label='Distance Left To Goal')
-        ax[1, 1].set_xlabel('Attempt')
-        ax[1, 1].set_ylabel('Distance Left')
-        ax[1, 1].set_title('Distance Left to Goal')
-        ax[1, 1].legend()
+            # Plot 4: Reward Control by Attempt
+            ax[1, 1].plot(Intento, Distance_left, linestyle='-', color='blue', label='Distance Left To Goal')
+            ax[1, 1].set_xlabel('Attempt')
+            ax[1, 1].set_ylabel('Distance Left')
+            ax[1, 1].set_title('Distance Left to Goal')
+            ax[1, 1].legend()
 
-    elif i == 4:
-        # Plot 6: Promedio acumulado de puntajes
-        ax[0, 0].plot(avg_intentos, avg_reward_ctrl, linestyle='-', color='blue', label='Reward Ctrl')
-        ax[0, 0].set_xlabel('Attempt')
-        ax[0, 0].set_ylabel('Control Score')
-        ax[0, 0].set_title('Control Score per 100 attempts')
-        ax[0, 0].legend()
+        elif i == 4:
+            # Plot 6: Promedio acumulado de puntajes
+            ax[0, 0].plot(avg_intentos, avg_reward_ctrl, linestyle='-', color='blue', label='Reward Ctrl')
+            ax[0, 0].set_xlabel('Attempt')
+            ax[0, 0].set_ylabel('Control Score')
+            ax[0, 0].set_title('Control Score per 100 attempts')
+            ax[0, 0].legend()
 
-        # Plot 7: Average Critic Losses by Attempt
-        ax[0, 1].plot(avg_intentos, avg_actor_loss, linestyle='-', color='brown', label='Actor Loss')
-        ax[0, 1].set_xlabel('Attempt')
-        ax[0, 1].set_ylabel('Actor Loss')
-        ax[0, 1].set_title('Actor Loss per 100 attempts')
-        ax[0, 1].legend()
+            # Plot 7: Average Critic Losses by Attempt
+            ax[0, 1].plot(avg_intentos, avg_actor_loss, linestyle='-', color='brown', label='Actor Loss')
+            ax[0, 1].set_xlabel('Attempt')
+            ax[0, 1].set_ylabel('Actor Loss')
+            ax[0, 1].set_title('Actor Loss per 100 attempts')
+            ax[0, 1].legend()
 
-        # Plot 8: Critic Loss 1 by Attempt
-        ax[1, 0].plot(avg_intentos, avg_critic_loss_1, linestyle='-', color='purple', label='Critic Loss 1')
-        ax[1, 0].set_xlabel('Attempt')
-        ax[1, 0].set_ylabel('Critic Loss 1')
-        ax[1, 0].set_title('Average Critic Loss 1 per 100 attempts')
-        ax[1, 0].legend()
+            # Plot 8: Critic Loss 1 by Attempt
+            ax[1, 0].plot(avg_intentos, avg_critic_loss_1, linestyle='-', color='purple', label='Critic Loss 1')
+            ax[1, 0].set_xlabel('Attempt')
+            ax[1, 0].set_ylabel('Critic Loss 1')
+            ax[1, 0].set_title('Average Critic Loss 1 per 100 attempts')
+            ax[1, 0].legend()
 
-        # Plot 9: Promedio Mejores Puntajes por c/3 intentos
-        ax[1, 1].plot(avg_intentos, avg_critic_loss_2, linestyle='-', color='purple', label='Critic Loss 2')
-        ax[1, 1].set_xlabel('Attempt')
-        ax[1, 1].set_ylabel('Crític Loss 2')
-        ax[1, 1].set_title('Average Crític Loss 2 per 100 attempts')
-        ax[1, 1].legend()
+            # Plot 9: Promedio Mejores Puntajes por c/3 intentos
+            ax[1, 1].plot(avg_intentos, avg_critic_loss_2, linestyle='-', color='purple', label='Critic Loss 2')
+            ax[1, 1].set_xlabel('Attempt')
+            ax[1, 1].set_ylabel('Crític Loss 2')
+            ax[1, 1].set_title('Average Crític Loss 2 per 100 attempts')
+            ax[1, 1].legend()
 
-    elif i == 8:
-        # Plot 13: TD Error 1 by Attempt
-        ax[0, 0].plot(avg_intentos, avg_td_error_1, linestyle='-', color='pink', label='TD Error 1')
-        ax[0, 0].set_xlabel('Attempt')
-        ax[0, 0].set_ylabel('TD Error 1')
-        ax[0, 0].set_title('Average TD Error 1  per 100 attempts')
-        ax[0, 0].legend()
+        elif i == 8:
+            # Plot 13: TD Error 1 by Attempt
+            ax[0, 0].plot(avg_intentos, avg_td_error_1, linestyle='-', color='pink', label='TD Error 1')
+            ax[0, 0].set_xlabel('Attempt')
+            ax[0, 0].set_ylabel('TD Error 1')
+            ax[0, 0].set_title('Average TD Error 1  per 100 attempts')
+            ax[0, 0].legend()
 
-        # Plot 14: TD Error 2 by Attempt
-        ax[0, 1].plot(avg_intentos, avg_td_error_2, linestyle='-', color='purple', label='TD Error 2')
-        ax[0, 1].set_xlabel('Attempt')
-        ax[0, 1].set_ylabel('TD Error 2')
-        ax[0, 1].set_title('Average TD Error 2 per 100 attempts')
-        ax[0, 1].legend()
+            # Plot 14: TD Error 2 by Attempt
+            ax[0, 1].plot(avg_intentos, avg_td_error_2, linestyle='-', color='purple', label='TD Error 2')
+            ax[0, 1].set_xlabel('Attempt')
+            ax[0, 1].set_ylabel('TD Error 2')
+            ax[0, 1].set_title('Average TD Error 2 per 100 attempts')
+            ax[0, 1].legend()
 
-        # Plot 15: Critic Loss by Attempt
-        ax[1, 0].plot(avg_intentos, avg_actor_loss, linestyle='-', color='brown', label='Actor Loss')
-        ax[1, 0].set_xlabel('Attempt')
-        ax[1, 0].set_ylabel('Actor Loss')
-        ax[1, 0].set_title('Average Actor Loss per 100 attempts')
-        ax[1, 0].legend()
+            # Plot 15: Critic Loss by Attempt
+            ax[1, 0].plot(avg_intentos, avg_actor_loss, linestyle='-', color='brown', label='Actor Loss')
+            ax[1, 0].set_xlabel('Attempt')
+            ax[1, 0].set_ylabel('Actor Loss')
+            ax[1, 0].set_title('Average Actor Loss per 100 attempts')
+            ax[1, 0].legend()
 
-        # Policy Gradients by Attempt
-        ax[1, 1].plot(avg_intentos, avg_policy_gradients, linestyle='-', color='orange', label='Policy Gradients')
-        ax[1, 1].set_xlabel('Attempt')
-        ax[1, 1].set_ylabel('Policy Gradient')
-        ax[1, 1].set_title('Average Policy Gradient per 100 attempts')
-        ax[1, 1].legend()
+            # Policy Gradients by Attempt
+            ax[1, 1].plot(avg_intentos, avg_policy_gradients, linestyle='-', color='orange', label='Policy Gradients')
+            ax[1, 1].set_xlabel('Attempt')
+            ax[1, 1].set_ylabel('Policy Gradient')
+            ax[1, 1].set_title('Average Policy Gradient per 100 attempts')
+            ax[1, 1].legend()
 
-    # Maximizar las ventanas antes de mostrar
-    plt.tight_layout()
-    figures.append(fig)
+        # Maximizar las ventanas antes de mostrar
+        plt.tight_layout()
+        figures.append(fig)
+
+
+    elif i == 12:
+
+        # Calcular promedios cada 100 intentos para posiciones y velocidades
+
+        avg_positions = [
+
+            np.mean([pos[joint] for pos in Positions[i:i + 100]])
+
+            for i in range(0, len(Positions), 100) for joint in range(7)
+
+        ]
+
+        avg_velocities = [
+
+            np.mean([vel[joint] for vel in Velocities[i:i + 100]])
+
+            for i in range(0, len(Velocities), 100) for joint in range(7)
+
+        ]
+
+        # Dividir en grupos de 100 intentos
+
+        avg_intentos = list(range(0, len(Intento), 100))
+
+        # Crear la primera figura con promedios de las uniones 1, 2 y 3
+
+        fig, axes = plt.subplots(1, 3, figsize=(16, 6))  # Una fila con 3 subgráficos
+
+        for joint in range(3):  # Uniones 1, 2 y 3
+
+            ax = axes[joint]
+
+            joint_avg_positions = avg_positions[joint::7]  # Filtrar posiciones de la unión actual
+
+            joint_avg_velocities = avg_velocities[joint::7]  # Filtrar velocidades de la unión actual
+
+            ax.plot(avg_intentos, joint_avg_positions, label='Position', color='blue', marker='o')
+
+            ax.plot(avg_intentos, joint_avg_velocities, label='Velocity', color='orange', marker='s')
+
+            ax.set_xlabel('Attempt (Average per 100)')
+
+            ax.set_ylabel('Value')
+
+            ax.set_title(f'Joint {joint + 1} (Avg per 100 Attempts)')
+
+            #ax.set_xticks(avg_intentos)
+
+            ax.legend()
+
+            #ax.grid()
+
+        plt.tight_layout()
+
+        figures.append(fig)
+
+        # Crear la segunda figura con promedios de las uniones 4, 5, 6 y 7
+
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))  # Una cuadrícula 2x2 para los gráficos
+
+        axes = axes.flatten()
+
+        for joint in range(3, 7):  # Uniones 4, 5, 6 y 7
+
+            ax = axes[joint - 3]
+
+            joint_avg_positions = avg_positions[joint::7]  # Filtrar posiciones de la unión actual
+
+            joint_avg_velocities = avg_velocities[joint::7]  # Filtrar velocidades de la unión actual
+
+            ax.plot(avg_intentos, joint_avg_positions, label='Position', color='blue', marker='o')
+
+            ax.plot(avg_intentos, joint_avg_velocities, label='Velocity', color='orange', marker='s')
+
+            ax.set_xlabel('Attempt (Average per 100)')
+
+            ax.set_ylabel('Value')
+
+            ax.set_title(f'Joint {joint + 1} (Avg per 100 Attempts)')
+
+            #ax.set_xticks(avg_intentos)
+
+            ax.legend()
+
+            #ax.grid()
+
+        plt.tight_layout()
+
+        figures.append(fig)
 
 # Display all figures
 plt.show()
